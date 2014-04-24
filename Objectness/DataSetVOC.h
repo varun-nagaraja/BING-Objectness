@@ -14,7 +14,7 @@ struct DataSetVOC
 	int trainNum, testNum;
 	vecS trainSet, testSet; // File names (NE) for training and testing images
 	vecS classNames; // Object class names
-	vector<vector<Vec4i>> gtTrainBoxes, gtTestBoxes; // Ground truth bounding boxes for training and testing images
+	vector<vector<Vec4i> > gtTrainBoxes, gtTestBoxes; // Ground truth bounding boxes for training and testing images
 	vector<vecI> gtTrainClsIdx, gtTestClsIdx; // Object class indexes  
 
 
@@ -23,11 +23,11 @@ struct DataSetVOC
 
 	static bool cvt2OpenCVYml(CStr &annoDir); // Needs to call yml.m in this solution before running this function.
 
-	static bool importSaliencyBench(CStr &salDir = "./THUS10000/", CStr &vocDir = "./THUS10000/");
+	//static bool importSaliencyBench(CStr &salDir = "./THUS10000/", CStr &vocDir = "./THUS10000/");
 
-	static void importPaulData(CStr &inData = "Z:/datasets/toMing/", CStr &outData = "D:/WkDir/DetectionProposals/Paul/");
+	//static void importPaulData(CStr &inData = "Z:/datasets/toMing/", CStr &outData = "D:/WkDir/DetectionProposals/Paul/");
 
-	static bool importImageNetBenchMark(CStr &orgDir = "D:/WkDir/ImageNet/", CStr &newDir = "D:/WkDir/DetectionProposals/ImgNet/");
+	//static bool importImageNetBenchMark(CStr &orgDir = "D:/WkDir/ImageNet/", CStr &newDir = "D:/WkDir/DetectionProposals/ImgNet/");
 
 	static inline double interUnio(const Vec4i &box1, const Vec4i &box2);
 
@@ -38,7 +38,7 @@ public: // Used for testing the ability of generic over classes
 	void loadDataGenericOverCls();
 
 private:
-	void loadBox(FileNode &fn, vector<Vec4i> &boxes, vecI &clsIdx);
+	void loadBox(const FileNode &fn, vector<Vec4i> &boxes, vecI &clsIdx);
 	bool loadBBoxes(CStr &nameNE, vector<Vec4i> &boxes, vecI &clsIdx);
 	static void getXmlStrVOC(CStr &fName, string &buf);
 	static inline string keepXmlChar(CStr &str);

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "DataSetVOC.h"
 
 
@@ -12,8 +12,8 @@ DataSetVOC::DataSetVOC(CStr &_wkDir)
 	CmFile::MkDir(resDir);
 	CmFile::MkDir(localDir);
 
-	trainSet = CmFile::loadStrList(wkDir + "ImageSets/Main/Train.txt");
-	testSet = CmFile::loadStrList(wkDir + "ImageSets/Main/Test.txt");
+	trainSet = CmFile::loadStrList(wkDir + "ImageSets/Main/train.txt");
+	testSet = CmFile::loadStrList(wkDir + "ImageSets/Main/test.txt");
 	classNames = CmFile::loadStrList(wkDir + "ImageSets/Main/class.txt");
 
 	// testSet.insert(testSet.end(), trainSet.begin(), trainSet.end());	
@@ -46,7 +46,7 @@ Vec4i getMaskRange(CMat &mask1u, int ext = 0)
 	return Vec4i(minX + 1, minY + 1, maxX, maxY); // Rect(minX, minY, maxX - minX, maxY - minY);
 }
 
-bool DataSetVOC::importImageNetBenchMark(CStr &_orgDir, CStr &newDir)
+/*bool DataSetVOC::importImageNetBenchMark(CStr &_orgDir, CStr &newDir)
 {
 	CStr orgDir = _orgDir + "ILSVRC2012_bbox_train_v2/";
 	vecS subFolders;
@@ -59,9 +59,9 @@ bool DataSetVOC::importImageNetBenchMark(CStr &_orgDir, CStr &newDir)
 	}
 
 	return true;
-}
+}*/
 
-bool DataSetVOC::importSaliencyBench(CStr &salDir, CStr &vocDir)
+/*bool DataSetVOC::importSaliencyBench(CStr &salDir, CStr &vocDir)
 {
 	string inDir, outImgDir = vocDir + "JPEGImages/", annoDir = vocDir + "Annotations/";
 	CmFile::MkDir(outImgDir);
@@ -89,10 +89,10 @@ bool DataSetVOC::importSaliencyBench(CStr &salDir, CStr &vocDir)
 	CmFile::writeStrList(vocDir + "ImageSets/Main/Class.txt", classNames);
 	
 	return true;	
-}
+}*/
 
 
-void DataSetVOC::importPaulData(CStr &_inDir, CStr &vocDir)
+/*void DataSetVOC::importPaulData(CStr &_inDir, CStr &vocDir)
 {
 	string inDir, outImgDir = vocDir + "JPEGImages/", annoDir = vocDir + "Annotations/";
 	CmFile::MkDir(outImgDir);
@@ -126,7 +126,7 @@ void DataSetVOC::importPaulData(CStr &_inDir, CStr &vocDir)
 	CmFile::writeStrList(vocDir + "ImageSets/Main/TrainVal.txt", trainSet);
 	CmFile::writeStrList(vocDir + "ImageSets/Main/Test.txt", testSet);
 	
-}
+}*/
 
 DataSetVOC::~DataSetVOC(void)
 {
@@ -155,7 +155,7 @@ void DataSetVOC::loadDataGenericOverCls()
 	int imgN = (int)allSet.size();
 	trainSet.clear(), testSet.clear();
 	trainSet.reserve(imgN), testSet.reserve(imgN);
-	vector<vector<Vec4i>> gtBoxes(imgN);
+	vector<vector<Vec4i> > gtBoxes(imgN);
 	vector<vecI> gtClsIdx(imgN);
 	for (int i = 0; i < imgN; i++){
 		if (!loadBBoxes(allSet[i], gtBoxes[i], gtClsIdx[i]))
@@ -187,7 +187,7 @@ void DataSetVOC::loadDataGenericOverCls()
 	printf("Load annotations (generic over classes) finished\n");
 }
 
-void DataSetVOC::loadBox(FileNode &fn, vector<Vec4i> &boxes, vecI &clsIdx){
+void DataSetVOC::loadBox(const FileNode &fn, vector<Vec4i> &boxes, vecI &clsIdx){
 	string isDifficult;
 	fn["difficult"]>>isDifficult;
 	if (isDifficult == "1")
@@ -202,6 +202,7 @@ void DataSetVOC::loadBox(FileNode &fn, vector<Vec4i> &boxes, vecI &clsIdx){
 
 	string clsName;
 	fn["name"]>>clsName;
+
 	clsIdx.push_back(findFromList(clsName, classNames));	
 	CV_Assert_(clsIdx[clsIdx.size() - 1] >= 0, ("Invalidate class name\n"));
 }
@@ -211,6 +212,7 @@ bool DataSetVOC::loadBBoxes(CStr &nameNE, vector<Vec4i> &boxes, vecI &clsIdx)
 	string fName = format(_S(annoPathW), _S(nameNE));
 	FileStorage fs(fName, FileStorage::READ);
 	FileNode fn = fs["annotation"]["object"];
+	
 	boxes.clear();
 	clsIdx.clear();
 	if (fn.isSeq()){
@@ -219,6 +221,7 @@ bool DataSetVOC::loadBBoxes(CStr &nameNE, vector<Vec4i> &boxes, vecI &clsIdx)
 	}
 	else
 		loadBox(fn, boxes, clsIdx);
+	fs.release();
 	return true;
 }
 
@@ -227,7 +230,7 @@ bool DataSetVOC::cvt2OpenCVYml(CStr &annoDir)
 {
 	vecS namesNE;
 	int imgNum = CmFile::GetNamesNE(annoDir + "*.yaml", namesNE);
-	printf("Converting annotations to OpenCV yml format:\n");
+	printf("Converting annotations of %d images to OpenCV yml format:\n",imgNum);
 	for (int i = 0; i < imgNum; i++){
 		printf("%d/%d %s.yaml\r", i, imgNum, _S(namesNE[i]));	
 		string fPath = annoDir + namesNE[i];
@@ -239,7 +242,7 @@ bool DataSetVOC::cvt2OpenCVYml(CStr &annoDir)
 // Needs to call yml.m in this solution before running this function.
 bool DataSetVOC::cvt2OpenCVYml(CStr &yamlName, CStr &ymlName)
 {	
-	ifstream f(yamlName);	
+	ifstream f(_S(yamlName));
 	FILE *fO = fopen(_S(ymlName), "w");
 	if (!f.is_open() && fO == NULL)
 		return false;
@@ -268,6 +271,7 @@ bool DataSetVOC::cvt2OpenCVYml(CStr &yamlName, CStr &ymlName)
 	FileStorage fs(ymlName, FileStorage::READ);
 	string tmp;
 	fs["annotation"]["folder"]>>tmp;
+	fs.release();
 	return true;
 }
 
@@ -282,7 +286,7 @@ void DataSetVOC::getTrainTest()
 
 void DataSetVOC::getXmlStrVOC(CStr &fName, string &buf)
 {
-	ifstream fin(fName);
+	ifstream fin(_S(fName));
 	string strLine;
 	buf.clear();
 	buf.reserve(100000);

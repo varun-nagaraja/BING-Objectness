@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "Objectness.h"
 #include "CmShow.h"
 
@@ -314,7 +314,7 @@ void Objectness::generateTrianData()
 {
 	const int NUM_TRAIN = _voc.trainNum;
 	const int FILTER_SZ = _W*_W;
-	vector<vector<Mat>> xTrainP(NUM_TRAIN), xTrainN(NUM_TRAIN);
+	vector<vector<Mat> > xTrainP(NUM_TRAIN), xTrainN(NUM_TRAIN);
 	vector<vecI> szTrainP(NUM_TRAIN); // Corresponding size index. 
 	const int NUM_NEG_BOX = 100; // Number of negative windows sampled from each image
 
@@ -645,11 +645,11 @@ Mat Objectness::trainSVM(const vector<Mat> &pX1f, const vector<Mat> &nX1f, int s
 }
 
 // Get potential bounding boxes for all test images
-void Objectness::getObjBndBoxesForTests(vector<vector<Vec4i>> &_boxesTests, int numDetPerSize)
+void Objectness::getObjBndBoxesForTests(vector<vector<Vec4i> > &_boxesTests, int numDetPerSize)
 {
 	const int TestNum = _voc.testSet.size();
 	vecM imgs3u(TestNum);
-	vector<ValStructVec<float, Vec4i>> boxesTests;
+	vector<ValStructVec<float, Vec4i> > boxesTests;
 	boxesTests.resize(TestNum);
 
 #pragma omp parallel for
@@ -707,23 +707,30 @@ void Objectness::getObjBndBoxesForTests(vector<vector<Vec4i>> &_boxesTests, int 
 
 
 // Get potential bounding boxes for all test images
-void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, int numDetPerSize)
+void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i> > &_boxesTests, int numDetPerSize, bool preloadModel, bool preloadImages)
 {
 	//setColorSpace(HSV);
-	trainObjectness(numDetPerSize);
+	if (!preloadModel)
+		trainObjectness(numDetPerSize);
 	loadTrainedModel();
 	illustrate();
 
 
 	const int TestNum = _voc.testSet.size();
-	vecM imgs3u(TestNum);
-	vector<ValStructVec<float, Vec4i>> boxesTests;
+	vecM imgs3u;
+	if (preloadImages) 
+		imgs3u.resize(TestNum);
+	vector<ValStructVec<float, Vec4i> > boxesTests;
 	boxesTests.resize(TestNum);
 
-#pragma omp parallel for
-	for (int i = 0; i < TestNum; i++){
-		imgs3u[i] = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
-		boxesTests[i].reserve(10000);
+	//Reading all images beforehand needs a lot of memory. 
+	//The timing results are affected based on when the image is loaded.
+	if (preloadImages){
+	#pragma omp parallel for
+		for (int i = 0; i < TestNum; i++){
+			imgs3u[i] = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
+			boxesTests[i].reserve(10000);
+		}
 	}
 
 	printf("Start predicting\n");
@@ -731,12 +738,21 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 	tm.Start();
 
 #pragma omp parallel for
-	for (int i = 0; i < TestNum; i++)
-		getObjBndBoxes(imgs3u[i], boxesTests[i], numDetPerSize);
+	for (int i = 0; i < TestNum; i++){
+		if (!preloadImages){
+		    Mat img = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
+		    getObjBndBoxes(img, boxesTests[i], numDetPerSize);
+		}else{
+			getObjBndBoxes(imgs3u[i], boxesTests[i], numDetPerSize);
+		}
+	}
 	
 	tm.Stop();
-	printf("Average time for predicting an image (%s) is %gs\n", _clrName[_Clr], tm.TimeInSeconds()/TestNum);
-
+	if (!preloadImages){
+		printf("Average time for loading and predicting an image (%s) is %gs\n", _clrName[_Clr], tm.TimeInSeconds()/TestNum);
+	}else{
+		printf("Average time for predicting an image (%s) is %gs\n", _clrName[_Clr], tm.TimeInSeconds()/TestNum);
+	}
 	_boxesTests.resize(TestNum);
 	CmFile::MkDir(_bbResDir);
 
@@ -759,7 +775,7 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 }
 
 
-void Objectness::getRandomBoxes(vector<vector<Vec4i>> &boxesTests, int num)
+void Objectness::getRandomBoxes(vector<vector<Vec4i> > &boxesTests, int num)
 {
 	const int TestNum = _voc.testSet.size();
 	boxesTests.resize(TestNum);
@@ -777,7 +793,7 @@ void Objectness::getRandomBoxes(vector<vector<Vec4i>> &boxesTests, int num)
 	evaluatePerImgRecall(boxesTests, "PerImgAll.m", num);
 }
 
-void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, CStr &saveName, const int NUM_WIN)
+void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i> > &boxesTests, CStr &saveName, const int NUM_WIN)
 {
 	vecD recalls(NUM_WIN);
 	vecD avgScore(NUM_WIN);
@@ -788,10 +804,11 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 		const int gtNumCrnt = boxesGT.size();
 		vecI detected(gtNumCrnt);
 		vecD score(gtNumCrnt);
+		double sumDetected = 0, abo = 0;
 		for (int j = 0; j < NUM_WIN; j++){
 			if (j >= (int)boxes.size()){
-				recalls[j] = recalls[j - 1];
-				avgScore[j] = avgScore[j - 1];
+				recalls[j] += sumDetected/gtNumCrnt;
+				avgScore[j] += abo/gtNumCrnt;
 				continue;
 			}
 
@@ -800,7 +817,7 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 				score[k] = max(score[k], s);
 				detected[k] = score[k] >= 0.5 ? 1 : 0;
 			}
-			double sumDetected = 0, abo = 0;
+			sumDetected = 0, abo = 0;
 			for (int k = 0; k < gtNumCrnt; k++)	
 				sumDetected += detected[k], abo += score[k];
 			recalls[j] += sumDetected/gtNumCrnt;
@@ -830,7 +847,7 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 	fclose(f);	
 }
 
-void Objectness::illuTestReults(const vector<vector<Vec4i>> &boxesTests)
+void Objectness::illuTestReults(const vector<vector<Vec4i> > &boxesTests)
 {
 	CStr resDir = _voc.localDir + "ResIlu/";
 	CmFile::MkDir(resDir);
@@ -868,7 +885,7 @@ void Objectness::illuTestReults(const vector<vector<Vec4i>> &boxesTests)
 	}
 }
 
-void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr &saveName, const int WIN_NUM) 
+void Objectness::evaluatePerClassRecall(vector<vector<Vec4i> > &boxesTests, CStr &saveName, const int WIN_NUM)
 {
 	const int TEST_NUM = _voc.testSet.size(), CLS_NUM = _voc.classNames.size();
 	if (boxesTests.size() != TEST_NUM){

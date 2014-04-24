@@ -1,9 +1,10 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 
+#ifdef _WIN32
 #include <shlobj.h>
 #include <Commdlg.h>
 #include <ShellAPI.h>
-
+#endif
 
 BOOL CmFile::MkDir(CStr&  _path)
 {
@@ -15,15 +16,22 @@ BOOL CmFile::MkDir(CStr&  _path)
 	for (int i = 0; buffer[i] != 0; i ++) {
 		if (buffer[i] == '\\' || buffer[i] == '/') {
 			buffer[i] = '\0';
+#ifdef _WIN32
 			CreateDirectoryA(buffer, 0);
+#else
+			mkdir(buffer, ALLPERMS);
+#endif
 			buffer[i] = '/';
 		}
 	}
+#ifdef _WIN32
 	return CreateDirectoryA(_S(_path), 0);
+#else
+	return mkdir(_S(_path), ALLPERMS);
+#endif
 }
 
-
-string CmFile::BrowseFolder()   
+/*string CmFile::BrowseFolder()
 {
 	static char Buffer[MAX_PATH];
 	BROWSEINFOA bi;//Initial bi 	
@@ -45,9 +53,9 @@ string CmFile::BrowseFolder()
 		return string(Buffer);
 	}
 	return string();   
-}
+}*/
 
-string CmFile::BrowseFile(const char* strFilter, bool isOpen)
+/*string CmFile::BrowseFile(const char* strFilter, bool isOpen)
 {
 	static char Buffer[MAX_PATH];
 	OPENFILENAMEA   ofn;  
@@ -69,9 +77,9 @@ string CmFile::BrowseFile(const char* strFilter, bool isOpen)
 	GetSaveFileNameA(&ofn);
 	return string(Buffer);
 
-}
+}*/
 
-int CmFile::Rename(CStr& _srcNames, CStr& _dstDir, const char *nameCommon, const char *nameExt)
+/*int CmFile::Rename(CStr& _srcNames, CStr& _dstDir, const char *nameCommon, const char *nameExt)
 {
 	vecS names;
 	string inDir;
@@ -82,16 +90,16 @@ int CmFile::Rename(CStr& _srcNames, CStr& _dstDir, const char *nameCommon, const
 		::CopyFileA(srcName.c_str(), dstName.c_str(), FALSE);
 	}
 	return fNum;
-}
+}*/
 
-void CmFile::RmFolder(CStr& dir)
+/*void CmFile::RmFolder(CStr& dir)
 {
 	CleanFolder(dir);
 	if (FolderExist(dir))
 		RunProgram("Cmd.exe", format("/c rmdir /s /q \"%s\"", _S(dir)), true, false);
-}
+}*/
 
-void CmFile::CleanFolder(CStr& dir, bool subFolder)
+/*void CmFile::CleanFolder(CStr& dir, bool subFolder)
 {
 	vecS names;
 	int fNum = CmFile::GetNames(dir + "/*.*", names);
@@ -103,8 +111,9 @@ void CmFile::CleanFolder(CStr& dir, bool subFolder)
 	if (subFolder)
 		for (int i = 0; i < subNum; i++)
 			CleanFolder(dir + "/" + subFolders[i], true);
-}
+}*/
 
+#ifdef _WIN32
 int CmFile::GetSubFolders(CStr& folder, vecS& subFolders)
 {
 	subFolders.clear();
@@ -123,8 +132,37 @@ int CmFile::GetSubFolders(CStr& folder, vecS& subFolders)
 	FindClose(hFind);
 	return (int)subFolders.size();
 }
+#else
+int CmFile::GetSubFolders(CStr& folder, vecS& subFolders)
+{
+	subFolders.clear();
+
+	DIR *dp = opendir(_S(folder));
+	if (dp == NULL){
+		cout << folder << endl;
+		perror("Cannot open folder");
+		return EXIT_FAILURE;
+	}
+
+	struct dirent *dirContent;
+	while ((dirContent = readdir(dp)) != NULL){
+		if (string(dirContent->d_name)[0] == '.')
+			continue;
+		struct stat st;
+		lstat(dirContent->d_name,&st);
+		if(S_ISDIR(st.st_mode)){
+			subFolders.push_back(string(dirContent->d_name));
+		}
+
+	}
+
+	closedir(dp);
+	return (int)subFolders.size();
+}
+#endif
 
 // Get image names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+#ifdef _WIN32
 int CmFile::GetNames(CStr &nameW, vecS &names, string &dir)
 {
 	dir = GetFolder(nameW);
@@ -145,6 +183,67 @@ int CmFile::GetNames(CStr &nameW, vecS &names, string &dir)
 	FindClose(hFind);
 	return (int)names.size();
 }
+#else
+int CmFile::GetNames(CStr &nameW, vecS &names, string &dir)
+{
+	dir = GetFolder(nameW);
+	names.clear();
+	names.reserve(6000);
+
+	DIR *dp = opendir(_S(dir));
+	if (dp == NULL){
+		cout << dir << endl;
+		perror("Cannot open directory");
+		return EXIT_FAILURE;
+	}
+
+	struct dirent *dirContent;
+	while ((dirContent = readdir(dp)) != NULL){
+		if (string(dirContent->d_name)[0] == '.')
+			continue;
+		struct stat st;
+		lstat(dirContent->d_name,&st);
+		if(S_ISREG(st.st_mode)){
+			names.push_back(string(dirContent->d_name));
+		}
+
+	}
+
+	closedir(dp);
+	return (int)names.size();
+}
+
+int CmFile::GetNames(CStr &nameW, vecS &names)
+{
+	string dir = GetFolder(nameW);
+	names.clear();
+	names.reserve(6000);
+
+	DIR *dp = opendir(_S(dir));
+	if (dp == NULL){
+		cout << dir << endl;
+		perror("Cannot open directory");
+		return EXIT_FAILURE;
+	}
+
+	struct dirent *dirContent;
+	while ((dirContent = readdir(dp)) != NULL){		
+		if (string(dirContent->d_name)[0] == '.')
+			continue;
+		struct stat st;
+		lstat(dirContent->d_name,&st);
+		
+		if(S_ISREG(st.st_mode)){
+			cout << string(dirContent->d_name) << " " << st.st_mode << endl;
+			names.push_back(string(dirContent->d_name));
+		}
+
+	}
+
+	closedir(dp);
+	return (int)names.size();
+}
+#endif
 
 int CmFile::GetNames(CStr& rootFolder, CStr &fileW, vecS &names)
 {
@@ -160,6 +259,7 @@ int CmFile::GetNames(CStr& rootFolder, CStr &fileW, vecS &names)
 	return (int)names.size();
 }
 
+#ifdef _WIN32
 int CmFile::GetNamesNE(CStr& nameWC, vecS &names, string &dir, string &ext)
 {
 	int fNum = GetNames(nameWC, names, dir);
@@ -168,6 +268,25 @@ int CmFile::GetNamesNE(CStr& nameWC, vecS &names, string &dir, string &ext)
 		names[i] = GetNameNE(names[i]);
 	return fNum;
 }
+#else
+int CmFile::GetNamesNE(CStr& nameWC, vecS &names, string &dir, string &ext)
+{
+	int fNum = GetNames(nameWC, names, dir);
+	//ext = GetExtention(nameWC);
+	for (int i = 0; i < fNum; i++)
+		names[i] = GetNameNE(names[i]);
+	return fNum;
+}
+
+int CmFile::GetNamesNE(CStr& nameWC, vecS &names)
+{
+	int fNum = GetNames(nameWC, names);
+	//string ext = GetExtention(nameWC);
+	for (int i = 0; i < fNum; i++)
+		names[i] = GetNameNE(names[i]);
+	return fNum;
+}
+#endif
 
 int CmFile::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
 {
@@ -179,15 +298,15 @@ int CmFile::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
 }
 
 // Load mask image and threshold thus noisy by compression can be removed
-Mat CmFile::LoadMask(CStr& fileName)
+/*Mat CmFile::LoadMask(CStr& fileName)
 {
 	Mat mask = imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
 	CV_Assert_(mask.data != NULL, ("Can't find mask image: %s", _S(fileName)));
 	compare(mask, 128, mask, CV_CMP_GT);
 	return mask;
-}
+}*/
 
-BOOL CmFile::Move2Dir(CStr &srcW, CStr dstDir)
+/*BOOL CmFile::Move2Dir(CStr &srcW, CStr dstDir)
 {
 	vecS names;
 	string inDir;
@@ -197,9 +316,9 @@ BOOL CmFile::Move2Dir(CStr &srcW, CStr dstDir)
 		if (Move(inDir + names[i], dstDir + names[i]) == FALSE)
 			r = FALSE;
 	return r;
-}
+}*/
 
-BOOL CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
+/*BOOL CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
 {
 	vecS names;
 	string inDir;
@@ -209,9 +328,9 @@ BOOL CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
 		if (Copy(inDir + names[i], dstDir + names[i]) == FALSE)
 			r = FALSE;
 	return r;
-}
+}*/
 
-void CmFile::ChkImgs(CStr &imgW)
+/*void CmFile::ChkImgs(CStr &imgW)
 {
 	vecS names;
 	string inDir;
@@ -225,10 +344,10 @@ void CmFile::ChkImgs(CStr &imgW)
 			printf("Processing %2.1f%%\r", (i*100.0)/imgNum);
 	}
 	printf("\t\t\t\t\r");
-}
+}*/
 
 
-void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
+/*void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
 {
 	string runExeFile = fileName;
 #ifdef _DEBUG
@@ -255,20 +374,20 @@ void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool show
 
 	if (waiteF)
 		WaitForSingleObject(ShExecInfo.hProcess,INFINITE);
-}
+}*/
 
-void CmFile::SegOmpThrdNum(double ratio /* = 0.8 */)
+/*void CmFile::SegOmpThrdNum(double ratio ) // = 0.8
 {
 	int thrNum = omp_get_max_threads();
 	int usedNum = cvRound(thrNum * ratio);
 	usedNum = max(usedNum, 1);
 	//CmLog::LogLine("Number of CPU cores used is %d/%d\n", usedNum, thrNum);
 	omp_set_num_threads(usedNum);
-}
+}*/
 
 
 // Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
-void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
+/*void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
 {
 	vecS namesNE;
 	string srcDir, srcExt;
@@ -276,15 +395,23 @@ void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
 	CmFile::MkDir(dstDir);
 	for (int i = 0; i < imgN; i++)
 		CmFile::Copy(srcDir + namesNE[i] + srcExt, dstDir + namesNE[i] + dstSuffix);
-}
+}*/
 
 vecS CmFile::loadStrList(CStr &fName)
 {
-	ifstream fIn(fName);
+	ifstream fIn(_S(fName));
 	string line;
 	vecS strs;
-	while(getline(fIn, line) && line.size())
-		strs.push_back(line);
+	while(getline(fIn, line) && line.size()){
+#ifndef _WIN32
+		int line_size = line.size();
+		//avoid copying the carriage return character
+		if (line[line_size-1] == '\r')
+			strs.push_back(line.substr(0,line_size-1));
+		else
+#endif
+			strs.push_back(line);
+	}
 	return strs;
 }
 

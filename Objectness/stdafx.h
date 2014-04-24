@@ -7,9 +7,11 @@
 
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
+#ifdef _WIN32
 #include <crtdbg.h>
 
 #include <SDKDDKVer.h>
+#endif
 #include <stdio.h>
 
 #pragma once
@@ -27,11 +29,21 @@
 #include <cmath>
 #include <time.h>
 #include <fstream>
-#include <random>
+//#include <random>
+
+#ifdef _WIN32
 #include <atlstr.h>
 #include <atltypes.h>
+#endif
+
 #include <omp.h>
-#include <strstream>
+//#include <strstream>
+
+#ifndef _WIN32
+#include <sys/stat.h>
+#include <dirent.h>
+#endif
+
 using namespace std;
 
 // TODO: reference additional headers your program requires here
@@ -57,6 +69,17 @@ typedef vector<string> vecS;
 typedef vector<Mat> vecM;
 typedef vector<float> vecF;
 typedef vector<double> vecD;
+
+#ifndef _WIN32
+typedef uint64_t UINT64;
+typedef uint32_t UINT;
+typedef int64_t INT64;
+typedef uint8_t byte;
+typedef bool BOOL;
+
+#define FALSE false;
+#define __popcnt64 __builtin_popcountll
+#endif
 
 enum{CV_FLIP_BOTH = -1, CV_FLIP_VERTICAL = 0, CV_FLIP_HORIZONTAL = 1};
 #define _S(str) ((str).c_str())

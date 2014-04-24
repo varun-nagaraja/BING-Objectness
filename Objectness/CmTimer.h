@@ -3,7 +3,7 @@
 class CmTimer
 {
 public:	
-	CmTimer::CmTimer(CStr t):title(t) { is_started = false; start_clock = 0; cumulative_clock = 0; n_starts = 0; }
+	CmTimer(CStr t):title(t) { is_started = false; start_clock = 0; cumulative_clock = 0; n_starts = 0; }
 
 	~CmTimer(){	if (is_started) printf("CmTimer '%s' is started and is being destroyed.\n", title.c_str());	}
 
@@ -54,7 +54,7 @@ void CmTimer::Stop()
 void CmTimer::Reset()
 {
 	if (is_started)	{
-		printf("CmTimer '%s'is started during reset request.\n Only reset cumulative time.\n");
+		printf("CmTimer '%s'is started during reset request.\n Only reset cumulative time.\n", title.c_str());
 		return;
 	}
 	cumulative_clock = 0;
