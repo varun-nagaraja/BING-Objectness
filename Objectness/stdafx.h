@@ -36,7 +36,9 @@
 #include <atltypes.h>
 #endif
 
+#ifndef __APPLE__
 #include <omp.h>
+#endif
 //#include <strstream>
 
 #ifndef _WIN32

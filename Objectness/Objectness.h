@@ -21,7 +21,7 @@ public:
 	// Training and testing on the dataset
 	void trainObjectness(int numDetPerSize = 100);
 	void getObjBndBoxesForTests(vector<vector<Vec4i> > &boxesTests, int numDetPerSize = 100);
-	void getObjBndBoxesForTestsFast(vector<vector<Vec4i> > &boxesTests, int numDetPerSize = 100, bool preloadModel, bool preloadImages);
+	void getObjBndBoxesForTestsFast(vector<vector<Vec4i> > &boxesTests, int numDetPerSize = 100, bool preloadModel=false, bool preloadImages=false);
 	void getRandomBoxes(vector<vector<Vec4i> > &boxesTests, int numD = 10000);
 	void evaluatePAMI12(CStr &saveName = "PlotMAMI12.m");
 	void evaluateIJCV13(CStr &saveName = "IJCV13.m");
