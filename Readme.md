@@ -29,7 +29,7 @@ Download an OpenCV readable version of [VOC 2007 annotations](http://mmcheng.net
 
 
 ### Building from source
-Modify the CMakeLists.txt file as needed. For example, to set OpenCV directory.
+Set OPENCV_DIR set as an environment variable in the shell if it is not present in the standard directories.
 ```
 mkdir build
 cd build

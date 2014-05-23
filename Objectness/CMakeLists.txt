@@ -1,7 +1,7 @@
 set(INC_DIRS ${BING_SOURCE_DIR}/LibLinear ${BING_SOURCE_DIR}/LibLinear/blas)
 set(LIB_DIRS ${BING_BINARY_DIR}/LibLinear)
 
-#OPENCV_DIR should be set as environment variables in the shell if it is not
+#OPENCV_DIR should be set as an environment variable in the shell if it is not
 #present in the standard directories
 if (DEFINED ENV{OPENCV_DIR})
   list(APPEND INC_DIRS ${OPENCV_DIR}/include)
