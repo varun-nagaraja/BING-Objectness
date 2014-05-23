@@ -774,7 +774,6 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i> > &_boxesTests,
 	evaluatePerImgRecall(_boxesTests, "PerImgAll.m", 5000);
 }
 
-
 void Objectness::getRandomBoxes(vector<vector<Vec4i> > &boxesTests, int num)
 {
 	const int TestNum = _voc.testSet.size();
