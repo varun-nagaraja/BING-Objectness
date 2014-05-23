@@ -17,5 +17,5 @@ endif (${CMAKE_COMPILER_IS_GNUCXX})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OPENMP_FLAG} -O3")
 
-add_executable(${PROJECT_NAME} Main.cpp CMFile.cpp CMShow.cpp DataSetVOC.cpp FilterTIG.cpp Objectness.cpp stdafx.cpp)
+add_executable(${PROJECT_NAME} Main.cpp CmFile.cpp CmShow.cpp DataSetVOC.cpp FilterTIG.cpp Objectness.cpp stdafx.cpp)
 target_link_libraries(${PROJECT_NAME} opencv_highgui opencv_core opencv_imgproc LIBLINEAR BLAS)
